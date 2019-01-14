@@ -1,2 +1,2 @@
 # RayTracingIn1WeekendPractice
-Practice repository of RayTracingIn1Weekend
+Practice repository of [RayTracingInOneWeekend](https://github.com/petershirley/raytracinginoneweekend)
