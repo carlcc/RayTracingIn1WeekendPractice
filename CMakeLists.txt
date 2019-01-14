@@ -95,11 +95,16 @@ add_library(app STATIC
         app/Vec3f.h
         app/stb_image_write.h
         app/Ray.h
-        )
+        app/Hitable.h
+        app/Sphere.cpp
+        app/Sphere.h
+        app/HitableList.cpp app/HitableList.h)
+
 
 set(PROJECTS
         "1.test"
         "1.Program1"
+        "2.Program2"
         )
 
 

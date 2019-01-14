@@ -19,7 +19,7 @@ public:
         return mDir;
     }
 
-    Vec3f getPointAtT(float t) {
+    Vec3f getPointAtT(float t) const {
         return mOrigin + mDir * t;
     }
 

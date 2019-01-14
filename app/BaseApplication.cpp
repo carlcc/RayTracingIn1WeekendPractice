@@ -33,7 +33,7 @@ bool BaseApplication::initialize()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     uint32_t WindowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-    mWindow = SDL_CreateWindow(mTitle.c_str(), 100, 100, 640, 480, WindowFlags);
+    mWindow = SDL_CreateWindow(mTitle.c_str(), 100, 100, 800, 400, WindowFlags);
     if (mWindow == nullptr) {
         return false;
     }
@@ -47,7 +47,7 @@ bool BaseApplication::initialize()
     SDL_GL_MakeCurrent(mWindow, context);
 
     gladLoadGL();
-    SDL_SetWindowSize(mWindow, 640, 480);
+    SDL_SetWindowSize(mWindow, 800, 400);
 
     const GLubyte* name = glGetString(GL_VENDOR); //返回负责当前OpenGL实现厂商的名字
     const GLubyte* biaoshifu = glGetString(GL_RENDERER); //返回一个渲染器标识符，通常是个硬件平台
