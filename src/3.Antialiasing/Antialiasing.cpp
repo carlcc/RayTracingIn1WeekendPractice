@@ -6,41 +6,40 @@
  * Created by Chen Chen on 2018/12/23.
  */
 #include <iostream>
-
 #include "gl/Texture2D.h"
-#include "gl/ShaderProgram.h"
-#include "Ray.h"
 #include "BaseApplication.h"
 #include "Paths.h"
 #include "Image.h"
 #include "FrameRateCounter.h"
+#include "gl/ShaderProgram.h"
 #include "TimeManager.h"
 #include "InputManager.h"
+#include "Vec3f.h"
 #include "HitableList.h"
 #include "Sphere.h"
 #include "RTCamera.h"
 
 
-class Program2 : public BaseApplication {
+class Antialiasing : public BaseApplication {
 public:
-    explicit Program2(const std::string &title) :
+    explicit Antialiasing(const std::string &title) :
             BaseApplication(title)
     {
 
     }
 
-    ~Program2()
+    ~Antialiasing()
     {
 
     }
-
-    bool prepareImage();
 
     bool initialize() override;
 
     void finalize() override;
 
 protected:
+
+    bool prepareImage();
 
     void display(bool autoRedraw) override;
 
@@ -80,19 +79,6 @@ public:
     Texture2D mTexture;
 };
 
-float hitSphere(const Vec3f& center, float radius, const Ray& r) {
-    Vec3f oc = r.getOrigin() - center;
-    float a = dot(r.getDirection(), r.getDirection());
-    float b = 2.0f * dot(oc, r.getDirection());
-    float c = dot(oc, oc) - radius*radius;
-    float discriminant = b*b - 4*a*c;
-
-    if (discriminant < 0) {
-        return -1.0f;
-    }
-    return (-b - std::sqrt(discriminant)) / (2.0f * a);
-}
-
 Vec3f color(const Ray& r, Hitable* world)
 {
     HitRecord rec;
@@ -106,10 +92,11 @@ Vec3f color(const Ray& r, Hitable* world)
     }
 }
 
-bool Program2::prepareImage()
+bool Antialiasing::prepareImage()
 {
     int nx = 800;
     int ny = 400;
+    int ns = 4;
 
     mImage.reallocate(nx, ny);
 
@@ -125,12 +112,20 @@ bool Program2::prepareImage()
     Hitable* world = new HitableList(list, 2);
 
     RTCamera cam;
+    float offsets[] = {
+            0.25f, 0.25f, 0.25f, 0.75f,
+            0.75f, 0.25f, 0.75f, 0.75f,
+    };
     for (int j = ny-1; j >= 0; j--) {
         for (int i = 0; i < nx; ++i) {
-            float u = 1.0f * i / nx;
-            float v = 1.0f * j / ny;
-            Ray r = cam.getRay(u, v);
-            Vec3f col = color(r, world);
+            Vec3f col(0.0f);
+            for (int k = 0; k < ns; ++k) {
+                float u = 1.0f * (i+offsets[k*2]) / nx;
+                float v = 1.0f * (j+offsets[k*2+1]) / ny;
+                Ray r = cam.getRay(u, v);
+                col += color(r, world);
+            }
+            col /= float(ns);
 
             img->r = (uint8_t) (col.r * 255);
             img->g = (uint8_t) (col.g * 255);
@@ -142,7 +137,7 @@ bool Program2::prepareImage()
     return true;
 }
 
-bool Program2::initialize()
+bool Antialiasing::initialize()
 {
     if (!BaseApplication::initialize()) {
         return false;
@@ -181,7 +176,7 @@ bool Program2::initialize()
     ShaderInfo shaders[] = {
             {GL_VERTEX_SHADER,   CURRENT_DIRECTORY + "../../assets/shader/shader.vert", 0},
             {GL_FRAGMENT_SHADER, CURRENT_DIRECTORY + "../../assets/shader/shader.frag", 0},
-            {GL_NONE,            "",                                0},
+            {GL_NONE,            "",                                                    0},
     };
     if (!mProgram.load(shaders)) {
         FATAL("Load shaders failed");
@@ -195,12 +190,12 @@ bool Program2::initialize()
     return true;
 }
 
-void Program2::finalize()
+void Antialiasing::finalize()
 {
 
 }
 
-void Program2::display(bool autoRedraw)
+void Antialiasing::display(bool autoRedraw)
 {
     glClearColor(0.0f, 0.8f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -213,16 +208,16 @@ void Program2::display(bool autoRedraw)
     BaseApplication::display(autoRedraw);
 }
 
-void Program2::tick()
+void Antialiasing::tick()
 {
     mFrameRateCounter.count();
 }
 
-void Program2::onMouseMove(int x, int y, int dx, int dy)
+void Antialiasing::onMouseMove(int x, int y, int dx, int dy)
 {
 }
 
-void Program2::onMouseButton(int button, int action)
+void Antialiasing::onMouseButton(int button, int action)
 {
     if (button == SDL_BUTTON_LEFT) {
         if (action == SDL_MOUSEBUTTONDOWN) {
@@ -244,4 +239,4 @@ void Program2::onMouseButton(int button, int action)
     }
 }
 
-DEFINE_MAIN("Program2", Program2, nullptr, Trace);
+DEFINE_MAIN("Antialiasing", Antialiasing, nullptr, Trace);

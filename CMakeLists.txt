@@ -98,13 +98,15 @@ add_library(app STATIC
         app/Hitable.h
         app/Sphere.cpp
         app/Sphere.h
-        app/HitableList.cpp app/HitableList.h)
+        app/HitableList.cpp app/HitableList.h app/RTCamera.h)
 
 
 set(PROJECTS
         "1.test"
         "1.Program1"
         "2.Program2"
+        "3.Antialiasing"
+        "4.DiffuseMaterials"
         )
 
 

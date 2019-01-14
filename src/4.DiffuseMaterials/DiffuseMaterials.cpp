@@ -6,41 +6,39 @@
  * Created by Chen Chen on 2018/12/23.
  */
 #include <iostream>
-
 #include "gl/Texture2D.h"
-#include "gl/ShaderProgram.h"
-#include "Ray.h"
 #include "BaseApplication.h"
 #include "Paths.h"
 #include "Image.h"
 #include "FrameRateCounter.h"
+#include "gl/ShaderProgram.h"
 #include "TimeManager.h"
 #include "InputManager.h"
-#include "HitableList.h"
 #include "Sphere.h"
+#include "HitableList.h"
 #include "RTCamera.h"
 
 
-class Program2 : public BaseApplication {
+class DiffuseMaterials : public BaseApplication {
 public:
-    explicit Program2(const std::string &title) :
+    explicit DiffuseMaterials(const std::string &title) :
             BaseApplication(title)
     {
 
     }
 
-    ~Program2()
+    ~DiffuseMaterials()
     {
 
     }
-
-    bool prepareImage();
 
     bool initialize() override;
 
     void finalize() override;
 
 protected:
+
+    bool prepareImage();
 
     void display(bool autoRedraw) override;
 
@@ -80,24 +78,22 @@ public:
     Texture2D mTexture;
 };
 
-float hitSphere(const Vec3f& center, float radius, const Ray& r) {
-    Vec3f oc = r.getOrigin() - center;
-    float a = dot(r.getDirection(), r.getDirection());
-    float b = 2.0f * dot(oc, r.getDirection());
-    float c = dot(oc, oc) - radius*radius;
-    float discriminant = b*b - 4*a*c;
-
-    if (discriminant < 0) {
-        return -1.0f;
+Vec3f randomInUnitSphere()
+{
+    while (true) {
+        Vec3f p = 2.0f*Vec3f(drand48(),drand48(),drand48()) - Vec3f(1.0f);
+        if (p.squaredLength() < 1.0f) {
+            return p;
+        }
     }
-    return (-b - std::sqrt(discriminant)) / (2.0f * a);
 }
 
 Vec3f color(const Ray& r, Hitable* world)
 {
     HitRecord rec;
-    if (world->hit(r, 0.0f, MAXFLOAT, rec)) {
-        return 0.5f * Vec3f(rec.normal.x + 1, rec.normal.y + 1, rec.normal.z + 1);
+    if (world->hit(r, 0.001f, MAXFLOAT, rec)) {
+        Vec3f target = rec.p + rec.normal + randomInUnitSphere();
+        return 0.5f * color(Ray(rec.p, target-rec.p), world);
     } else {
         Vec3f norm = r.getDirection();
         norm.normalize();
@@ -106,10 +102,11 @@ Vec3f color(const Ray& r, Hitable* world)
     }
 }
 
-bool Program2::prepareImage()
+bool DiffuseMaterials::prepareImage()
 {
-    int nx = 800;
-    int ny = 400;
+    int nx = 400;
+    int ny = 200;
+    int ns = 100;
 
     mImage.reallocate(nx, ny);
 
@@ -125,13 +122,23 @@ bool Program2::prepareImage()
     Hitable* world = new HitableList(list, 2);
 
     RTCamera cam;
+    float offsets[] = {
+            0.25f, 0.25f, 0.25f, 0.75f,
+            0.75f, 0.25f, 0.75f, 0.75f,
+    };
     for (int j = ny-1; j >= 0; j--) {
         for (int i = 0; i < nx; ++i) {
-            float u = 1.0f * i / nx;
-            float v = 1.0f * j / ny;
-            Ray r = cam.getRay(u, v);
-            Vec3f col = color(r, world);
+            Vec3f col(0.0f);
+            for (int k = 0; k < ns; ++k) {
+                float u = 1.0f * (i+drand48()) / nx;
+                float v = 1.0f * (j+drand48()) / ny;
+                Ray r = cam.getRay(u, v);
+                col += color(r, world);
+            }
+            col /= float(ns);
 
+            // gamma correction
+            col = Vec3f(std::sqrt(col.x), std::sqrt(col.y), std::sqrt(col.z));
             img->r = (uint8_t) (col.r * 255);
             img->g = (uint8_t) (col.g * 255);
             img->b = (uint8_t) (col.b * 255);
@@ -142,7 +149,7 @@ bool Program2::prepareImage()
     return true;
 }
 
-bool Program2::initialize()
+bool DiffuseMaterials::initialize()
 {
     if (!BaseApplication::initialize()) {
         return false;
@@ -181,7 +188,7 @@ bool Program2::initialize()
     ShaderInfo shaders[] = {
             {GL_VERTEX_SHADER,   CURRENT_DIRECTORY + "../../assets/shader/shader.vert", 0},
             {GL_FRAGMENT_SHADER, CURRENT_DIRECTORY + "../../assets/shader/shader.frag", 0},
-            {GL_NONE,            "",                                0},
+            {GL_NONE,            "",                                                    0},
     };
     if (!mProgram.load(shaders)) {
         FATAL("Load shaders failed");
@@ -195,12 +202,12 @@ bool Program2::initialize()
     return true;
 }
 
-void Program2::finalize()
+void DiffuseMaterials::finalize()
 {
 
 }
 
-void Program2::display(bool autoRedraw)
+void DiffuseMaterials::display(bool autoRedraw)
 {
     glClearColor(0.0f, 0.8f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -213,16 +220,16 @@ void Program2::display(bool autoRedraw)
     BaseApplication::display(autoRedraw);
 }
 
-void Program2::tick()
+void DiffuseMaterials::tick()
 {
     mFrameRateCounter.count();
 }
 
-void Program2::onMouseMove(int x, int y, int dx, int dy)
+void DiffuseMaterials::onMouseMove(int x, int y, int dx, int dy)
 {
 }
 
-void Program2::onMouseButton(int button, int action)
+void DiffuseMaterials::onMouseButton(int button, int action)
 {
     if (button == SDL_BUTTON_LEFT) {
         if (action == SDL_MOUSEBUTTONDOWN) {
@@ -244,4 +251,4 @@ void Program2::onMouseButton(int button, int action)
     }
 }
 
-DEFINE_MAIN("Program2", Program2, nullptr, Trace);
+DEFINE_MAIN("DiffuseMaterials", DiffuseMaterials, nullptr, Trace);
