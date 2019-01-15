@@ -153,4 +153,7 @@ inline Vec3f cross(const Vec3f& v1, const Vec3f& v2)
     );
 }
 
-
+inline Vec3f reflect(const Vec3f& v, const Vec3f& n)
+{
+    return v - 2*dot(v,n)*n;
+}

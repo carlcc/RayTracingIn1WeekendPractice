@@ -17,17 +17,17 @@
 #include "Sphere.h"
 #include "HitableList.h"
 #include "RTCamera.h"
+#include "RTMaterial.h"
 
-
-class DiffuseMaterials : public BaseApplication {
+class MetalMaterials : public BaseApplication {
 public:
-    explicit DiffuseMaterials(const std::string &title) :
+    explicit MetalMaterials(const std::string &title) :
             BaseApplication(title)
     {
 
     }
 
-    ~DiffuseMaterials()
+    ~MetalMaterials()
     {
 
     }
@@ -88,12 +88,16 @@ Vec3f randomInUnitSphere()
     }
 }
 
-Vec3f color(const Ray& r, Hitable* world)
+Vec3f color(const Ray& r, Hitable* world, int depth)
 {
     HitRecord rec;
     if (world->hit(r, 0.001f, MAXFLOAT, rec)) {
-        Vec3f target = rec.p + rec.normal + randomInUnitSphere();
-        return 0.5f * color(Ray(rec.p, target-rec.p), world);
+        Ray scattered;
+        Vec3f attenuation;
+        if (depth > 0 && rec.material->scatter(r, rec, attenuation, scattered)) {
+            return attenuation * color(scattered, world, depth - 1);
+        }
+        return Vec3f(0.0f);
     } else {
         Vec3f norm = r.getDirection();
         norm.normalize();
@@ -102,10 +106,10 @@ Vec3f color(const Ray& r, Hitable* world)
     }
 }
 
-bool DiffuseMaterials::prepareImage()
+bool MetalMaterials::prepareImage()
 {
-    int nx = 400;
-    int ny = 200;
+    int nx = 800;
+    int ny = 400;
     int ns = 100;
 
     mImage.reallocate(nx, ny);
@@ -115,11 +119,13 @@ bool DiffuseMaterials::prepareImage()
     };
     RGB *img = (RGB *) mImage.getData();
 
-    Hitable* list[2] = {
-            new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5),
-            new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100)
+    Hitable* list[4] = {
+            new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5, new RTLambertianMaterial(Vec3f(0.8f, .3f, .3f))),
+            new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100, new RTLambertianMaterial(Vec3f(.8f, .8f, .0f))),
+            new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .6f, .2f))),
+            new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .8f, .8f)))
     };
-    Hitable* world = new HitableList(list, 2);
+    Hitable* world = new HitableList(list, 4);
 
     RTCamera cam;
     for (int j = ny-1; j >= 0; j--) {
@@ -129,7 +135,7 @@ bool DiffuseMaterials::prepareImage()
                 float u = 1.0f * (i+drand48()) / nx;
                 float v = 1.0f * (j+drand48()) / ny;
                 Ray r = cam.getRay(u, v);
-                col += color(r, world);
+                col += color(r, world, 50);
             }
             col /= float(ns);
 
@@ -145,7 +151,7 @@ bool DiffuseMaterials::prepareImage()
     return true;
 }
 
-bool DiffuseMaterials::initialize()
+bool MetalMaterials::initialize()
 {
     if (!BaseApplication::initialize()) {
         return false;
@@ -198,12 +204,12 @@ bool DiffuseMaterials::initialize()
     return true;
 }
 
-void DiffuseMaterials::finalize()
+void MetalMaterials::finalize()
 {
 
 }
 
-void DiffuseMaterials::display(bool autoRedraw)
+void MetalMaterials::display(bool autoRedraw)
 {
     glClearColor(0.0f, 0.8f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -216,16 +222,16 @@ void DiffuseMaterials::display(bool autoRedraw)
     BaseApplication::display(autoRedraw);
 }
 
-void DiffuseMaterials::tick()
+void MetalMaterials::tick()
 {
     mFrameRateCounter.count();
 }
 
-void DiffuseMaterials::onMouseMove(int x, int y, int dx, int dy)
+void MetalMaterials::onMouseMove(int x, int y, int dx, int dy)
 {
 }
 
-void DiffuseMaterials::onMouseButton(int button, int action)
+void MetalMaterials::onMouseButton(int button, int action)
 {
     if (button == SDL_BUTTON_LEFT) {
         if (action == SDL_MOUSEBUTTONDOWN) {
@@ -247,4 +253,4 @@ void DiffuseMaterials::onMouseButton(int button, int action)
     }
 }
 
-DEFINE_MAIN("DiffuseMaterials", DiffuseMaterials, nullptr, Trace);
+DEFINE_MAIN("MetalMaterials", MetalMaterials, nullptr, Trace);

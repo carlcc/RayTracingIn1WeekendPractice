@@ -31,6 +31,7 @@ bool Sphere::hit(const Ray& r, float tMin, float tMax, HitRecord& rec) const
             rec.t = tmp;
             rec.p = r.getPointAtT(rec.t);
             rec.normal = (rec.p - mCenter) / radius;
+            rec.material = mMaterial;
             return true;
         }
         tmp = (-b + std::sqrt(b*b-a*c)) / a;
@@ -38,6 +39,7 @@ bool Sphere::hit(const Ray& r, float tMin, float tMax, HitRecord& rec) const
             rec.t = tmp;
             rec.p = r.getPointAtT(rec.t);
             rec.normal = (rec.p - mCenter) / radius;
+            rec.material = mMaterial;
             return true;
         }
     }
