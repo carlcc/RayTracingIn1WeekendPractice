@@ -120,11 +120,11 @@ bool DielectricMaterials::prepareImage()
     RGB *img = (RGB *) mImage.getData();
 
     Hitable* list[5] = {
-            new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5, new RTLambertianMaterial(Vec3f(0.8f, .3f, .3f))),
+            new Sphere(Vec3f(0.0f, 0.0f, -2.0f), 0.5, new RTLambertianMaterial(Vec3f(0.1f, .2f, .5f))),
             new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100, new RTLambertianMaterial(Vec3f(.8f, .8f, .0f))),
             new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .6f, .2f))),
             new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5, new RTDielectricMaterial(1.5f)),
-            new Sphere(Vec3f(-4.0f, 1.0f, -4.0f), 0.5, new RTLambertianMaterial(Vec3f(0.3f, .8f, .3f)))
+            new Sphere(Vec3f(4.0f, 1.0f, 4.0f), 0.5, new RTLambertianMaterial(Vec3f(0.3f, .8f, .3f)))
     };
     Hitable* world = new HitableList(list, 5);
 
