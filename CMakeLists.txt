@@ -7,8 +7,8 @@ set(CMAKE_CXX_STANDARD 11)
 if(WIN32)
     set(COMMON_LIBS
             optimized
-            SDL2
             SDL2main
+            SDL2
             glad
             opengl32
             Imm32

@@ -10,6 +10,24 @@ public:
     Vec3f horizontal;
     Vec3f vertical;
 
+    RTCamera(const Vec3f& origin, const Vec3f& target, const Vec3f& worldUp, float vFovDeg, float aspect)
+    {
+        Vec3f zDir = origin - target;
+        zDir.normalize();
+        Vec3f xDir = cross(worldUp, zDir);
+        xDir.normalize();
+        Vec3f yDir = cross(zDir, xDir);
+        yDir.normalize();
+
+        float halfVert = std::tan(vFovDeg * float(M_PI) / 180.f / 2);
+        float halfHori = halfVert * aspect;
+
+        this->lowerLeftCorner = origin - zDir - halfVert * yDir - halfHori * xDir;
+        this->origin = origin;
+
+        this->horizontal = 2 * halfHori * xDir;
+        this->vertical = 2 * halfVert * yDir;
+    }
 
     RTCamera() {
         lowerLeftCorner = Vec3f(-2.0f, -1.0f, -1.0f);

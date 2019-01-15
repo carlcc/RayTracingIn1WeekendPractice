@@ -6,6 +6,8 @@
  * Created by Chen Chen on 2018/12/23.
  */
 #include <iostream>
+#include <queue>
+#include <mutex>
 #include "gl/Texture2D.h"
 #include "BaseApplication.h"
 #include "Paths.h"
@@ -91,7 +93,7 @@ Vec3f randomInUnitSphere()
 Vec3f color(const Ray& r, Hitable* world, int depth)
 {
     HitRecord rec;
-    if (world->hit(r, 0.001f, MAXFLOAT, rec)) {
+    if (world->hit(r, 0.001f, 9999999.0f, rec)) {
         Ray scattered;
         Vec3f attenuation;
         if (depth > 0 && rec.material->scatter(r, rec, attenuation, scattered)) {
@@ -106,47 +108,76 @@ Vec3f color(const Ray& r, Hitable* world, int depth)
     }
 }
 
+const int nx = 1000;
+const int ny = 500;
+const int ns = 50;
 bool DielectricMaterials::prepareImage()
 {
-    int nx = 400;
-    int ny = 200;
-    int ns = 100;
-
     mImage.reallocate(nx, ny);
 
     struct RGB {
         uint8_t r, g, b;
     };
+    struct Task {
+        RGB* ptr;
+        float u, v;
+    };
     RGB *img = (RGB *) mImage.getData();
 
-    Hitable* list[5] = {
-            new Sphere(Vec3f(0.0f, 0.0f, -2.0f), 0.5, new RTLambertianMaterial(Vec3f(0.1f, .2f, .5f))),
+    Hitable* list[6] = {
+            new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5, new RTLambertianMaterial(Vec3f(0.1f, .2f, .5f))),
             new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100, new RTLambertianMaterial(Vec3f(.8f, .8f, .0f))),
             new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .6f, .2f))),
-            new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5, new RTDielectricMaterial(1.5f)),
+            new Sphere(Vec3f(-.5f, 0.0f, -1.0f), 0.5, new RTDielectricMaterial(1.2f)),
+            new Sphere(Vec3f(-.5f, 1.0f, -1.0f), 0.5, new RTDielectricMaterial(1.2f)),
             new Sphere(Vec3f(4.0f, 1.0f, 4.0f), 0.5, new RTLambertianMaterial(Vec3f(0.3f, .8f, .3f)))
     };
-    Hitable* world = new HitableList(list, 5);
+    Hitable* world = new HitableList(list, 6);
 
-    RTCamera cam;
+    std::queue<Task> tasks;
+    std::mutex mutex;
+
+    RTCamera cam(Vec3f(-3.f, 1.f, -5.f), Vec3f(1.0f, 0.0f, 1.0f), Vec3f(0.0f, 1.0f, 0.0f), 45, (float)nx / ny);
     for (int j = ny-1; j >= 0; j--) {
         for (int i = 0; i < nx; ++i) {
-            Vec3f col(0.0f);
-            for (int k = 0; k < ns; ++k) {
-                float u = 1.0f * (i+drand48()) / nx;
-                float v = 1.0f * (j+drand48()) / ny;
-                Ray r = cam.getRay(u, v);
-                col += color(r, world, 50);
-            }
-            col /= float(ns);
-
-            // gamma correction
-            col = Vec3f(std::sqrt(col.x), std::sqrt(col.y), std::sqrt(col.z));
-            img->r = (uint8_t) (col.r * 255);
-            img->g = (uint8_t) (col.g * 255);
-            img->b = (uint8_t) (col.b * 255);
-            ++img;
+            float u = 1.0f * (i+drand48()) / nx;
+            float v = 1.0f * (j+drand48()) / ny;
+            tasks.push(Task { ++img, u, v });
+//            ++img;
         }
+    }
+
+    std::thread threads[8];
+    for (auto& i : threads) {
+        i = std::thread([&tasks, &mutex, &cam, &world]() {
+            while (true) {
+                Task task;
+                {
+                    std::unique_lock<std::mutex> lck(mutex);
+                    if (tasks.empty()) {
+                        break;
+                    }
+                    task = tasks.front();
+                    tasks.pop();
+                }
+
+                Vec3f col(0.0f);
+                for (int k = 0; k < ns; ++k) {
+                    Ray r = cam.getRay(task.u, task.v);
+                    col += color(r, world, 50);
+                }
+                col /= float(ns);
+
+                // gamma correction
+                col = Vec3f(std::sqrt(col.x), std::sqrt(col.y), std::sqrt(col.z));
+                task.ptr->r = (uint8_t) (col.r * 255);
+                task.ptr->g = (uint8_t) (col.g * 255);
+                task.ptr->b = (uint8_t) (col.b * 255);
+            }
+        });
+    }
+    for (auto& i : threads) {
+        i.join();
     }
 
     return true;
