@@ -62,24 +62,40 @@ public:
 
         float niOverNt;
         Vec3f refracted;
+        float cosine;
         if (dot(ray.getDirection(), rec.normal) > 0) {
             outNorm = -rec.normal;
             niOverNt = refIdx;
+            cosine = refIdx * dot(ray.getDirection(), rec.normal) / ray.getDirection().length();
         } else {
             outNorm = rec.normal;
             niOverNt = 1.0f / refIdx;
+            cosine = -dot(ray.getDirection(), rec.normal) / ray.getDirection().length();
         }
 
+        float reflectProb;
         attenuation = Vec3f(1.0f, 1.0f, 1.0f);
         if (refract(ray.getDirection(), outNorm, niOverNt, refracted)) {
-            scattered = Ray(rec.p, refracted);
+            reflectProb = schlick(cosine, refIdx);
         } else {
+            reflectProb = 1.0f;
+//            return false;
+        }
+        if (drand48() < reflectProb) {
             Vec3f reflected = reflect(ray.getDirection(), rec.normal);
             reflected.normalize();
-            scattered = Ray(rec.p, reflected);
-//            return false;
+            scattered = Ray(rec.p, reflectProb);
+        } else {
+            scattered = Ray(rec.p, refracted);
         }
         return true;
 
+    }
+
+private:
+    static float schlick(float cosine, float refIndex) {
+        float r0 = (1-refIndex) / (1+refIndex);
+        r0 *= r0;
+        return r0 + (1-r0)*std::pow(1.0f-cosine, 5.f);
     }
 };
