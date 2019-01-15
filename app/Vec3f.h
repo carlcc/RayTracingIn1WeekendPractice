@@ -18,7 +18,7 @@ public:
     Vec3f(const Vec3f& v): x(v.x), y(v.y), z(v.z) { }
 
     inline const Vec3f& operator+() const { return *this; }
-    inline Vec3f operator-() { return Vec3f(-x, -y, -z); }
+    inline Vec3f operator-() const { return Vec3f(-x, -y, -z); }
     inline float operator[](int i) const {
         ASSERT(i >=0 && i < 4, "Index out of bounds");
         return data[i];
@@ -156,4 +156,17 @@ inline Vec3f cross(const Vec3f& v1, const Vec3f& v2)
 inline Vec3f reflect(const Vec3f& v, const Vec3f& n)
 {
     return v - 2*dot(v,n)*n;
+}
+
+inline bool refract(const Vec3f& v, const Vec3f& n, float niOverNt, Vec3f& refracted)
+{
+    Vec3f uv = v;
+    uv.normalize();
+    float dt = dot(uv, n);
+    float discriminant = 1.0f - niOverNt * niOverNt*(1-dt*dt);
+    if (discriminant > 0) {
+        refracted = niOverNt*(uv - n*dt) - n*std::sqrt(discriminant);
+        return true;
+    }
+    return false;
 }

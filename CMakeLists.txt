@@ -112,6 +112,7 @@ set(PROJECTS
         "3.Antialiasing"
         "4.DiffuseMaterials"
         "5.MetalMaterials"
+        "6.DielectricMaterials"
         )
 
 

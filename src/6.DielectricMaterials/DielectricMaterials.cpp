@@ -19,15 +19,15 @@
 #include "RTCamera.h"
 #include "RTMaterial.h"
 
-class MetalMaterials : public BaseApplication {
+class DielectricMaterials : public BaseApplication {
 public:
-    explicit MetalMaterials(const std::string &title) :
+    explicit DielectricMaterials(const std::string &title) :
             BaseApplication(title)
     {
 
     }
 
-    ~MetalMaterials()
+    ~DielectricMaterials()
     {
 
     }
@@ -106,7 +106,7 @@ Vec3f color(const Ray& r, Hitable* world, int depth)
     }
 }
 
-bool MetalMaterials::prepareImage()
+bool DielectricMaterials::prepareImage()
 {
     int nx = 400;
     int ny = 200;
@@ -119,13 +119,14 @@ bool MetalMaterials::prepareImage()
     };
     RGB *img = (RGB *) mImage.getData();
 
-    Hitable* list[4] = {
+    Hitable* list[5] = {
             new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5, new RTLambertianMaterial(Vec3f(0.8f, .3f, .3f))),
             new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100, new RTLambertianMaterial(Vec3f(.8f, .8f, .0f))),
-            new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .6f, .2f), 0.5f)),
-            new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .8f, .8f)))
+            new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5, new RTMetalMaterial(Vec3f(.8f, .6f, .2f))),
+            new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5, new RTDielectricMaterial(1.5f)),
+            new Sphere(Vec3f(-4.0f, 1.0f, -4.0f), 0.5, new RTLambertianMaterial(Vec3f(0.3f, .8f, .3f)))
     };
-    Hitable* world = new HitableList(list, 4);
+    Hitable* world = new HitableList(list, 5);
 
     RTCamera cam;
     for (int j = ny-1; j >= 0; j--) {
@@ -151,7 +152,7 @@ bool MetalMaterials::prepareImage()
     return true;
 }
 
-bool MetalMaterials::initialize()
+bool DielectricMaterials::initialize()
 {
     if (!BaseApplication::initialize()) {
         return false;
@@ -204,12 +205,12 @@ bool MetalMaterials::initialize()
     return true;
 }
 
-void MetalMaterials::finalize()
+void DielectricMaterials::finalize()
 {
 
 }
 
-void MetalMaterials::display(bool autoRedraw)
+void DielectricMaterials::display(bool autoRedraw)
 {
     glClearColor(0.0f, 0.8f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -222,16 +223,16 @@ void MetalMaterials::display(bool autoRedraw)
     BaseApplication::display(autoRedraw);
 }
 
-void MetalMaterials::tick()
+void DielectricMaterials::tick()
 {
     mFrameRateCounter.count();
 }
 
-void MetalMaterials::onMouseMove(int x, int y, int dx, int dy)
+void DielectricMaterials::onMouseMove(int x, int y, int dx, int dy)
 {
 }
 
-void MetalMaterials::onMouseButton(int button, int action)
+void DielectricMaterials::onMouseButton(int button, int action)
 {
     if (button == SDL_BUTTON_LEFT) {
         if (action == SDL_MOUSEBUTTONDOWN) {
@@ -253,4 +254,4 @@ void MetalMaterials::onMouseButton(int button, int action)
     }
 }
 
-DEFINE_MAIN("MetalMaterials", MetalMaterials, nullptr, Trace);
+DEFINE_MAIN("DielectricMaterials", DielectricMaterials, nullptr, Trace);
