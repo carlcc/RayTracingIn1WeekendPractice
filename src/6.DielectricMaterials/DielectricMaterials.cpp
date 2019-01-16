@@ -108,9 +108,9 @@ Vec3f color(const Ray& r, Hitable* world, int depth)
     }
 }
 
-const int nx = 1000;
-const int ny = 500;
-const int ns = 50;
+const int nx = 1920;
+const int ny = 960;
+const int ns = 100;
 bool DielectricMaterials::prepareImage()
 {
     mImage.reallocate(nx, ny);
@@ -137,7 +137,10 @@ bool DielectricMaterials::prepareImage()
     std::queue<Task> tasks;
     std::mutex mutex;
 
-    RTCamera cam(Vec3f(-3.f, 1.f, -5.f), Vec3f(1.0f, 0.0f, 1.0f), Vec3f(0.0f, 1.0f, 0.0f), 45, (float)nx / ny);
+    Vec3f lookFrom = Vec3f(-3.f, 1.f, -5.f);
+    Vec3f lookAt = Vec3f(0.0f, 0.0f, -1.0f);
+    float focusDistance = (lookAt - lookFrom).length();
+    RTCamera cam(lookFrom, lookAt, Vec3f(0.0f, 1.0f, 0.0f), 45, (float)nx / ny, focusDistance, .50f);
     for (int j = ny-1; j >= 0; j--) {
         for (int i = 0; i < nx; ++i) {
             float u = 1.0f * (i+drand48()) / nx;

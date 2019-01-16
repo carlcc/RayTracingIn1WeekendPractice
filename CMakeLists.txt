@@ -49,7 +49,7 @@ elseif(UNIX)
             SDL2main
             SDL2
             glad
-
+            pthread
             dl
             )
     set(OS_PREFIX linux)
