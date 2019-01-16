@@ -113,6 +113,8 @@ set(PROJECTS
         "4.DiffuseMaterials"
         "5.MetalMaterials"
         "6.DielectricMaterials"
+        "7.RandomScene"
+        "8.OGLRT"
         )
 
 

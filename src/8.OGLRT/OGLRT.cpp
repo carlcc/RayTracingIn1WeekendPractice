@@ -6,32 +6,33 @@
  * Created by Chen Chen on 2018/12/23.
  */
 #include <iostream>
-
+#include <queue>
+#include <mutex>
 #include "gl/Texture2D.h"
-#include "gl/ShaderProgram.h"
-#include "Ray.h"
 #include "BaseApplication.h"
 #include "Paths.h"
 #include "Image.h"
 #include "FrameRateCounter.h"
+#include "gl/ShaderProgram.h"
 #include "TimeManager.h"
 #include "InputManager.h"
+#include "Sphere.h"
+#include "HitableList.h"
+#include "RTCamera.h"
+#include "RTMaterial.h"
 
-
-class Program1 : public BaseApplication {
+class OGLRT : public BaseApplication {
 public:
-    explicit Program1(const std::string &title) :
+    explicit OGLRT(const std::string &title) :
             BaseApplication(title)
     {
 
     }
 
-    ~Program1()
+    ~OGLRT()
     {
 
     }
-
-    bool prepareImage();
 
     bool initialize() override;
 
@@ -77,52 +78,7 @@ public:
     Texture2D mTexture;
 };
 
-Vec3f color(const Ray& r)
-{
-    Vec3f dir = r.getDirection();
-    dir.normalize();
-
-    float t = (dir.y + 1.0f) * 0.5f;
-
-    return (1.0-t)*Vec3f(1.0f) + Vec3f(0.5f, 0.7f, 1.0f)*t;
-}
-bool Program1::prepareImage()
-{
-    int nx = 200;
-    int ny = 100;
-
-    mImage.reallocate(200, 100);
-
-    struct RGB {
-        uint8_t r, g, b;
-    };
-//    Vec3f (*img)[200][100] = (Vec3f(*)[200][100]) mImage.getData();
-    RGB *img = (RGB *) mImage.getData();
-
-    Vec3f lowerLeftCorner(-2.0f, -1.0f, -1.0f);
-    Vec3f horizontal(4.0f, 0.0f, 0.0f);
-    Vec3f vertical(0.0f, 2.0f, 0.0f);
-    Vec3f origin(0.0f, 0.0f, 0.0f);
-
-    int k = 0;
-    for (int j = ny-1; j >= 0; j--) {
-        for (int i = 0; i < nx; ++i) {
-            float u = 1.0f * i / nx;
-            float v = 1.0f * j / ny;
-            Ray r(origin, lowerLeftCorner + horizontal*u + vertical*v);
-            Vec3f col = color(r);
-
-            img->r = (uint8_t) (col.r * 255);
-            img->g = (uint8_t) (col.g * 255);
-            img->b = (uint8_t) (col.b * 255);
-            ++img;
-        }
-    }
-
-    return true;
-}
-
-bool Program1::initialize()
+bool OGLRT::initialize()
 {
     if (!BaseApplication::initialize()) {
         return false;
@@ -152,15 +108,15 @@ bool Program1::initialize()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void *) (3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
 
-    prepareImage();
-
-    Texture2D::active(GL_TEXTURE0);
-    mTexture.initialize();
-    mTexture.bufferImage(mImage.getData(), mImage.getWidth(), mImage.getHeight(), Texture2D::RGB888);
+//    prepareImage();
+//
+//    Texture2D::active(GL_TEXTURE0);
+//    mTexture.initialize();
+//    mTexture.bufferImage(mImage.getData(), mImage.getWidth(), mImage.getHeight(), Texture2D::RGB888);
 
     ShaderInfo shaders[] = {
-            {GL_VERTEX_SHADER,   CURRENT_DIRECTORY + "../../assets/shader/shader.vert", 0},
-            {GL_FRAGMENT_SHADER, CURRENT_DIRECTORY + "../../assets/shader/shader.frag", 0},
+            {GL_VERTEX_SHADER,   CURRENT_DIRECTORY + "shader.vert", 0},
+            {GL_FRAGMENT_SHADER, CURRENT_DIRECTORY + "shader.frag", 0},
             {GL_NONE,            "",                                0},
     };
     if (!mProgram.load(shaders)) {
@@ -170,39 +126,72 @@ bool Program1::initialize()
 
 
     mProgram.use();
-    mProgram.setInt("ourTexture", 0);
+
 
     return true;
 }
 
-void Program1::finalize()
+void OGLRT::finalize()
 {
 
 }
 
-void Program1::display(bool autoRedraw)
+const static int MAT_GLASS = 0;
+const static int MAT_METAL = 1;
+const static int MAT_DIFFUSE = 3;
+void OGLRT::display(bool autoRedraw)
 {
     glClearColor(0.0f, 0.8f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     mProgram.use();
-    mTexture.bind();
+
+    RTCamera cam;
+
+    mProgram.setVec3("gCamera.origin", cam.origin.data);
+    mProgram.setVec3("gCamera.lowerLeftCorner", cam.lowerLeftCorner.data);
+    mProgram.setVec3("gCamera.horizontal", cam.horizontal.data);
+    mProgram.setVec3("gCamera.vertical", cam.vertical.data);
+    mProgram.setFloat("gCamera.lensRadius", cam.lensRadius);
+    mProgram.setVec3("gCamera.right", cam.right.data);
+    mProgram.setVec3("gCamera.up", cam.up.data);
+    mProgram.setVec3("gCamera.back", cam.back.data);
+    mProgram.setInt("viewPortWidth", getWidth());
+    mProgram.setInt("viewPortHeight", getHeight());
+
+    mProgram.setVec3("gWorld[0].center", Vec3f(0.0f, 0.0f, -1.0f).data);
+    mProgram.setFloat("gWorld[0].radius", 0.5);
+    mProgram.setInt("gWorld[0].material", 0);
+    mProgram.setVec3("gWorld[1].center", Vec3f(0.0f, -100.5f, -1.0f).data);
+    mProgram.setFloat("gWorld[1].radius", 100.f);
+    mProgram.setInt("gWorld[1].material", 1);
+
+    mProgram.setInt("gMaterials[0].type", MAT_DIFFUSE);
+    mProgram.setVec3("gMaterials[0].color", Vec3f(1.f, .0f, .0f).data);
+    mProgram.setFloat("gMaterials[0].fractionRate", 1.5f);
+    mProgram.setInt("gMaterials[1].type", MAT_METAL);
+    mProgram.setVec3("gMaterials[1].color", Vec3f(.5f, .5f, .5f).data);
+    mProgram.setFloat("gMaterials[1].fractionRate", 1.5f);
+
+    mProgram.setInt("gNSpheres", 2);
+
+
     glBindVertexArray(mVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     BaseApplication::display(autoRedraw);
 }
 
-void Program1::tick()
+void OGLRT::tick()
 {
     mFrameRateCounter.count();
 }
 
-void Program1::onMouseMove(int x, int y, int dx, int dy)
+void OGLRT::onMouseMove(int x, int y, int dx, int dy)
 {
 }
 
-void Program1::onMouseButton(int button, int action)
+void OGLRT::onMouseButton(int button, int action)
 {
     if (button == SDL_BUTTON_LEFT) {
         if (action == SDL_MOUSEBUTTONDOWN) {
@@ -224,4 +213,4 @@ void Program1::onMouseButton(int button, int action)
     }
 }
 
-DEFINE_MAIN("Program1", Program1, nullptr, Trace);
+DEFINE_MAIN("OGLRT", OGLRT, nullptr, Trace);
